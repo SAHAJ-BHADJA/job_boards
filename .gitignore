@@ -1,0 +1,29 @@
+# --- Secrets / env ---
+.env
+*.env
+.env.*
+
+# --- Local database & logs (regenerated at runtime) ---
+db/
+logs/
+*.sqlite
+*.sqlite3
+*.db
+
+# --- Generated dashboard output (rebuilt each run) ---
+dashboard/index.html
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# --- OS / editor ---
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
