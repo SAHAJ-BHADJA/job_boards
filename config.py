@@ -54,10 +54,32 @@ WORLDWIDE_INDICATORS = [
     "anywhere", "worldwide", "world wide", "global", "remote", "fully remote",
     "100% remote", "no location", "any location",
 ]
+# Words that indicate a role is actually remote (used by ATS scrapers that also
+# list on-site jobs — we require one of these so on-site roles are dropped).
+REMOTE_INDICATORS = [
+    "remote", "anywhere", "distributed", "work from home", "wfh",
+    "home based", "home-based", "virtual",
+]
 # Locations that explicitly EXCLUDE the US -> drop even if "remote".
 NON_US_ONLY_INDICATORS = [
     "emea only", "europe only", "eu only", "uk only", "canada only",
     "apac only", "latam only", "india only", "australia only",
+]
+# Specific non-US countries/regions. If one of these appears in the location and
+# there's NO US indicator, the job is dropped (e.g. "Remote Canada", "Remote - UK").
+# Matched with word boundaries (see base.is_usa_remote). "georgia" omitted on
+# purpose (US state vs country ambiguity).
+NON_US_COUNTRIES = [
+    "canada", "united kingdom", "uk", "ireland", "germany", "france", "spain",
+    "italy", "netherlands", "poland", "portugal", "romania", "sweden", "norway",
+    "denmark", "finland", "switzerland", "austria", "belgium", "czech",
+    "hungary", "greece", "ukraine", "india", "pakistan", "bangladesh",
+    "philippines", "indonesia", "vietnam", "thailand", "malaysia", "singapore",
+    "japan", "china", "hong kong", "taiwan", "south korea", "australia",
+    "new zealand", "brazil", "mexico", "argentina", "chile", "colombia", "peru",
+    "nigeria", "kenya", "ghana", "south africa", "egypt", "morocco", "uae",
+    "dubai", "israel", "turkey", "saudi", "qatar", "emea", "apac", "latam",
+    "europe", "asia", "africa",
 ]
 
 # ---------------------------------------------------------------------------
@@ -74,6 +96,35 @@ INCLUDE_UNDATED = True
 ADZUNA_APP_ID = os.environ.get("ADZUNA_APP_ID", "")
 ADZUNA_APP_KEY = os.environ.get("ADZUNA_APP_KEY", "")
 JOOBLE_API_KEY = os.environ.get("JOOBLE_API_KEY", "")
+
+# ---------------------------------------------------------------------------
+# Phase 2 — ATS company boards (public JSON, no key). Each slug = one HTTP call.
+# Unknown/invalid slugs simply return nothing and are skipped. Add your own
+# target companies here. (These are first-party boards with accurate dates and
+# explicit remote flags — the highest-quality Software/ML/Platform source.)
+# ---------------------------------------------------------------------------
+GREENHOUSE_COMPANIES = [
+    "airbnb", "stripe", "coinbase", "gitlab", "databricks", "robinhood",
+    "dropbox", "doordash", "instacart", "brex", "figma", "notion", "samsara",
+    "reddit", "pinterest", "lyft", "asana", "gusto", "benchling", "affirm",
+    "cloudflare", "twitch", "plaid", "discord", "snowflakecomputing", "datadog",
+    "mongodb", "hashicorp", "elastic", "confluent", "scaleai", "rippling",
+    "cruise", "wealthfront", "chime", "sofi", "flexport", "checkr", "gemini",
+]
+LEVER_COMPANIES = [
+    "spotify", "ycombinator", "kraken", "mercury", "deel", "revolut",
+    "netlify", "voleon",
+]
+ASHBY_COMPANIES = [
+    "ramp", "openai", "linear", "vercel", "replicate", "mistral", "anysphere",
+    "perplexity", "cohere", "elevenlabs", "runwayml", "character", "suno",
+    "hebbia", "sierra", "clay",
+]
+
+# Jobicy remote-job API (public, no key). We fix geo=usa and sweep a few industries.
+JOBICY_GEO = "usa"
+JOBICY_INDUSTRIES = ["engineering", "dev", "data-science"]
+JOBICY_COUNT = 50
 
 # ---------------------------------------------------------------------------
 # Paths

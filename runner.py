@@ -18,13 +18,17 @@ import config
 import db
 import build_dashboard
 from scrapers import (
+    # Phase 1 — remote job boards
     remoteok, remotive, weworkremotely, himalayas,
     workingnomads, hackernews, adzuna, jooble,
+    # Phase 2 — ATS company boards + more aggregators
+    greenhouse, lever, ashby, jobicy, jobspresso,
 )
 
 SCRAPERS = [
     remoteok, remotive, weworkremotely, himalayas,
     workingnomads, hackernews, adzuna, jooble,
+    greenhouse, lever, ashby, jobicy, jobspresso,
 ]
 
 

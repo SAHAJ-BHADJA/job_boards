@@ -7,7 +7,7 @@
 - **OS:** Windows 11, PowerShell primary shell
 - **Created:** 2026-09-29
 - **Last updated:** 2026-09-30
-- **Current phase:** Phase 1 — **DEPLOYED & LIVE.** Tier 1 scrapers + CSV/SQLite + Excel export + static dashboard, auto-run daily via GitHub Actions, hosted free on GitHub Pages. Only remaining lever: add free Adzuna/Jooble keys for more volume.
+- **Current phase:** Phase 2 — **DEPLOYED & LIVE.** Phase 1 (remote job boards) + Phase 2 (ATS company boards: Greenhouse/Lever/Ashby, plus Jobicy & Jobspresso), auto-run daily via GitHub Actions, hosted free on GitHub Pages. Remaining lever: add free Adzuna/Jooble keys, and expand ATS company lists in `config.py`.
 - **Live dashboard:** https://sahaj-bhadja.github.io/job_boards/
 - **Repo:** https://github.com/SAHAJ-BHADJA/job_boards
 
@@ -193,6 +193,11 @@ All under `E:\Job_bot\`. Python 3.13, deps: `requests`, `feedparser`.
 | `scrapers/hackernews.py` | HN "Who is Hiring" via Algolia API (best-effort, freeform parsing). No key. |
 | `scrapers/adzuna.py` | Adzuna REST API. **Needs free `ADZUNA_APP_ID` + `ADZUNA_APP_KEY` env vars**; auto-skips if unset. |
 | `scrapers/jooble.py` | Jooble POST API. **Needs free `JOOBLE_API_KEY` env var**; auto-skips if unset. |
+| `scrapers/greenhouse.py` | **(Phase 2)** Greenhouse ATS boards for companies in `config.GREENHOUSE_COMPANIES`. No key. `require_remote=True`. |
+| `scrapers/lever.py` | **(Phase 2)** Lever ATS boards for `config.LEVER_COMPANIES`. No key. Uses `workplaceType`. |
+| `scrapers/ashby.py` | **(Phase 2)** Ashby ATS boards for `config.ASHBY_COMPANIES`. No key. Uses `isRemote` + address country. |
+| `scrapers/jobicy.py` | **(Phase 2)** Jobicy remote API, `geo=usa` across `config.JOBICY_INDUSTRIES`. No key. |
+| `scrapers/jobspresso.py` | **(Phase 2)** Jobspresso RSS feed. No key. |
 | `runner.py` | **Daily entry point.** Runs all scrapers (failures isolated), upserts to DB, rebuilds dashboard, logs to `logs/runner.log`. |
 | `build_dashboard.py` | Reads DB → writes self-contained `dashboard/index.html`. |
 | `db/jobs.sqlite` | The database (created on first run). |
@@ -234,6 +239,40 @@ Funnel numbers captured for reference (raw → role_ok → loc_ok → in_24h):
 3. **Deploy to Render** (see Section 8).
 4. (Optional) Broaden Remotive to more categories; add more WWR feeds.
 5. (Later) Phase 2 Tier 2 boards (Built In, Wellfound, YC/Ashby/Greenhouse, etc.).
+
+## 6b. Phase 2 — Tier 2 boards (added 2026-09-30)
+
+Implemented the CI-safe subset of Tier 2 (plain HTTP only — GitHub Actions has no
+headless browser). Probed every candidate live before building.
+
+**Integrated platforms — full list (13 sources):**
+- *Phase 1 (remote boards, no key):* Remote OK, Remotive, We Work Remotely, Himalayas, Working Nomads, Hacker News (Who is Hiring)
+- *Phase 1 (need free key):* Adzuna, Jooble
+- *Phase 2 (ATS boards + aggregators, no key):* **Greenhouse, Lever, Ashby** (first-party company boards, accurate dates + explicit remote flags), **Jobicy** (remote API, native `geo=usa`), **Jobspresso** (RSS)
+
+**Highest-value addition = the ATS boards.** They are first-party, have accurate
+`first_published`/`createdAt`/`publishedAt` dates and explicit remote flags, and no
+anti-bot. Company slugs live in `config.GREENHOUSE_COMPANIES` / `LEVER_COMPANIES` /
+`ASHBY_COMPANIES` — **just add slugs to expand coverage** (unknown slugs skip safely).
+YC-style startups largely use these ATSs, so this also covers "YC jobs" indirectly.
+
+**Skipped Tier 2 boards (need a headless browser + anti-bot bypass — not CI-safe):**
+startup.jobs (Cloudflare 403), remote.co (Cloudflare), HigherEdJobs (Incapsula),
+DailyRemote (no feed), NoDesk (SPA), Wellfound (GraphQL + bot wall), Built In,
+SimplyHired, CareerBuilder, Snagajob, YC SPA, Nature/IEEE/ACM (YM/Incapsula).
+Revisit only if we add a Playwright-based runner (heavier, more fragile).
+
+**Filter hardening (Phase 2):** ATS boards list on-site roles too, so a
+`require_remote=True` path was added (`base.is_remote` + `is_remote` job flag).
+Also tightened `is_usa_remote` to reject explicit non-US countries even when
+"remote" is present (fixes "Remote Canada" leaking in) via `config.NON_US_COUNTRIES`
++ `base._FOREIGN_RE`. `db.import_csv` now re-applies the role+location filters on
+load, so old rows self-heal when filters tighten (time window is NOT re-applied, to
+preserve valid history).
+
+**First Phase 2 run:** 24 matched (Greenhouse 12, Jobicy 6, Ashby 2, WWR 2,
+Himalayas 1, Lever 1); after the Canada fix + self-heal → **23 clean rows**.
+Local run takes ~3–4 min (OpenAI's Ashby board alone is ~13 MB); fine for daily CI.
 
 ## 7b. DEPLOYED: hosting & storage (final architecture, 2026-09-30)
 
@@ -320,6 +359,13 @@ Chosen: cloud scheduler. Render specifics to implement:
 - **Phase 1 is complete and running in the cloud, $0 cost.**
 - **Only remaining user action for more volume:** add `ADZUNA_APP_ID`/`ADZUNA_APP_KEY` (+ optional `JOOBLE_API_KEY`) as GitHub repo Actions Secrets. No code change needed.
 - **Next possible work:** Phase 2 (Tier 2 boards), dedup across boards, email/alert on new matches.
+
+### 2026-09-30 — Session 3 (model: Opus 4.8) — Phase 2 implemented
+- Listed the 8 Phase 1 platforms for the user, then implemented Phase 2.
+- Probed all Tier 2 candidates live; built only the CI-safe (plain-HTTP) ones: **Greenhouse, Lever, Ashby** (ATS boards, company lists in `config.py`), **Jobicy** (geo=usa), **Jobspresso** (RSS). Documented the browser-only boards we skipped and why (Section 6b).
+- Added `base.is_remote` + `require_remote` for ATS on-site filtering; tightened `is_usa_remote` with `NON_US_COUNTRIES` (fixed "Remote Canada" leak); made `import_csv` self-healing. Added unit tests (all pass).
+- First run: 24 matched → **23 clean** after fix (Greenhouse 11, Jobicy 6, Ashby 2, WWR 2, Himalayas 1, Lever 1). Total sources now **13**.
+- **Next action:** push, trigger CI, verify live. Then optional: add API keys, expand ATS company slugs, Phase 3 (cross-board dedup, alerts).
 
 <!-- TEMPLATE for next entry:
 ### YYYY-MM-DD — Session N (model: ...)

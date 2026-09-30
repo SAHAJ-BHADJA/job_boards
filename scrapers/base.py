@@ -57,10 +57,23 @@ def match_role(title):
 _STATE_RE = re.compile(
     r"\b(" + "|".join(config.US_STATE_CODES) + r")\b", re.IGNORECASE
 )
+_FOREIGN_RE = re.compile(
+    r"\b(" + "|".join(re.escape(c) for c in config.NON_US_COUNTRIES) + r")\b",
+    re.IGNORECASE,
+)
+
+
+def is_remote(text):
+    """True if the text signals a remote role (for ATS boards mixing on-site jobs)."""
+    t = (text or "").lower()
+    return any(w in t for w in config.REMOTE_INDICATORS)
 
 
 def is_usa_remote(location_text):
-    """True if the location indicates US eligibility (or worldwide, if enabled)."""
+    """True if the location indicates US eligibility (or generic worldwide).
+
+    A location that names a specific non-US country and gives no US signal is
+    rejected even when it says "remote" (e.g. "Remote Canada")."""
     loc = (location_text or "").lower()
 
     # Hard exclusions first (region-locked, non-US).
@@ -68,22 +81,25 @@ def is_usa_remote(location_text):
         if bad in loc:
             return False
 
+    # Explicit US signals win immediately.
     for good in config.US_INDICATORS:
         if good in loc:
             return True
-
     # State codes like "NY", "CA" (only trust when the string is short/locationy).
     if len(loc) <= 40 and _STATE_RE.search(loc):
         return True
+
+    # A specific foreign country with no US signal => not USA.
+    if _FOREIGN_RE.search(loc):
+        return False
 
     if config.INCLUDE_WORLDWIDE:
         for w in config.WORLDWIDE_INDICATORS:
             if w in loc:
                 return True
-
-    # Empty location on a remote board => treat as worldwide if enabled.
-    if not loc.strip() and config.INCLUDE_WORLDWIDE:
-        return True
+        # Empty location on a remote board => treat as worldwide.
+        if not loc.strip():
+            return True
 
     return False
 
@@ -144,11 +160,16 @@ def to_iso(dt):
 # Unified filter: apply role + location + time to raw records.
 # raw record dict must have: title, company, location, url, posted_dt (datetime|None)
 # --------------------------------------------------------------------------- #
-def filter_jobs(platform, raw_records):
+def filter_jobs(platform, raw_records, require_remote=False):
     out = []
     for r in raw_records:
         role = match_role(r.get("title"))
         if not role:
+            continue
+        # ATS boards list on-site roles too; require an explicit remote signal.
+        if require_remote and not (
+            r.get("is_remote") or is_remote(r.get("location")) or is_remote(r.get("title"))
+        ):
             continue
         if not is_usa_remote(r.get("location")):
             continue

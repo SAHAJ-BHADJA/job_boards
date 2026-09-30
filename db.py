@@ -107,6 +107,8 @@ def import_csv(path=None):
     """Load a previously-committed CSV into the DB (preserving original timestamps).
     This is how history persists across ephemeral CI runs. No-op if file missing.
     Returns number of rows imported."""
+    from scrapers import base  # local import to avoid a circular import at module load
+
     path = path or config.CSV_PATH
     if not os.path.exists(path):
         return 0
@@ -115,6 +117,13 @@ def import_csv(path=None):
     with open(path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             if not row.get("url") or not row.get("title"):
+                continue
+            # Self-heal: prune rows that no longer pass the current location/role
+            # rules (e.g. after tightening filters). Time window is NOT re-applied
+            # so genuinely-old-but-valid history is preserved.
+            if not base.match_role(row.get("title")):
+                continue
+            if not base.is_usa_remote(row.get("location")):
                 continue
             now = datetime.now(timezone.utc).isoformat()
             conn.execute(
