@@ -7,7 +7,9 @@
 - **OS:** Windows 11, PowerShell primary shell
 - **Created:** 2026-09-29
 - **Last updated:** 2026-09-30
-- **Current phase:** Phase 1 — BUILT & RUNNING locally. Tier 1 scrapers + SQLite + static HTML dashboard done. Next: get Adzuna/Jooble keys for volume, then deploy to Render.
+- **Current phase:** Phase 1 — **DEPLOYED & LIVE.** Tier 1 scrapers + CSV/SQLite + Excel export + static dashboard, auto-run daily via GitHub Actions, hosted free on GitHub Pages. Only remaining lever: add free Adzuna/Jooble keys for more volume.
+- **Live dashboard:** https://sahaj-bhadja.github.io/job_boards/
+- **Repo:** https://github.com/SAHAJ-BHADJA/job_boards
 
 ---
 
@@ -233,7 +235,38 @@ Funnel numbers captured for reference (raw → role_ok → loc_ok → in_24h):
 4. (Optional) Broaden Remotive to more categories; add more WWR feeds.
 5. (Later) Phase 2 Tier 2 boards (Built In, Wellfound, YC/Ashby/Greenhouse, etc.).
 
-## 8. Render deployment plan (not done yet)
+## 7b. DEPLOYED: hosting & storage (final architecture, 2026-09-30)
+
+User chose **Excel export + free GitHub hosting** over Render. Implemented:
+
+- **Durable store = `data/jobs.csv`** — committed to the repo, so history survives
+  ephemeral CI runs; opens directly in Excel; diff-friendly. This is the source of truth.
+- **SQLite** (`db/jobs.sqlite`, git-ignored) is rebuilt from the CSV at the start of
+  each run and used for clean dedup (UNIQUE url) + querying, then dumped back to CSV.
+- **Exports each run:** `dashboard/jobs.csv` + `dashboard/jobs.xlsx` (formatted,
+  clickable links, autofilter) — surfaced as download buttons on the dashboard.
+- **Automation:** `.github/workflows/daily.yml`
+  - Triggers: `cron: "0 13 * * *"` (13:00 UTC = 18:30 IST) + manual `workflow_dispatch`.
+  - Steps: checkout → setup Python 3.13 → pip install → `python runner.py`
+    (Adzuna/Jooble keys read from repo **Secrets**) → commit `data/jobs.csv` if changed
+    → upload `dashboard/` as Pages artifact → deploy to Pages.
+  - Uses default `GITHUB_TOKEN` (contents:write, pages:write, id-token:write). Its own
+    commit does NOT retrigger the workflow (no loop).
+- **Hosting:** GitHub Pages, source = GitHub Actions (enabled via API `build_type=workflow`).
+  - **Live URL: https://sahaj-bhadja.github.io/job_boards/**
+  - Verified 200: `/`, `/jobs.csv`, `/jobs.xlsx`. First Actions run (id 36653353003) = success.
+
+**To add API keys later (no code change needed):** GitHub repo → Settings → Secrets and
+variables → Actions → New repository secret: `ADZUNA_APP_ID`, `ADZUNA_APP_KEY`,
+`JOOBLE_API_KEY`. Next daily run (or manual `gh workflow run daily.yml`) picks them up.
+
+**Known non-blocking warnings in CI:** Node20 deprecation + ubuntu-latest migration
+notices from the actions. Harmless now; bump action versions eventually.
+
+## 8. Render deployment plan (SUPERSEDED — kept for reference only)
+
+> NOTE: We went with GitHub Actions + Pages instead (Section 7b). Render is no longer
+> the plan. This section is retained only if a future pivot to Render is wanted.
 
 Chosen: cloud scheduler. Render specifics to implement:
 - **Persistence:** Render's filesystem is ephemeral. SQLite on it is wiped on
@@ -277,6 +310,16 @@ Chosen: cloud scheduler. Render specifics to implement:
 - Pushed to **https://github.com/SAHAJ-BHADJA/job_boards** (branch `main`, public). First commit `1a5198c`. gh authenticated as SAHAJ-BHADJA (has `repo` + `workflow` scopes).
 - Repo is PUBLIC → keys must stay in env vars only (never commit `.env`).
 - **Next action:** (1) user gets Adzuna key; (2) build Render deploy files (`render.yaml`, tiny web server, choose persistent-disk vs Postgres) and push.
+
+### 2026-09-30 — Session 2 (cont.) — Excel export + free GitHub hosting (DEPLOYED)
+- User asked "can't we just use Excel?" → explained SQLite is already just a file and gives free dedup; agreed to add Excel/CSV export AND switch hosting from Render to **free GitHub Actions + Pages**.
+- Added `data/jobs.csv` as durable committed source of truth; SQLite rebuilt from it each run; added `export_csv`/`import_csv`/`export_xlsx` to `db.py`; runner now imports history → scrapes → exports CSV+XLSX → builds dashboard. Added CSV/Excel download buttons.
+- Added `.github/workflows/daily.yml` (daily cron + manual), enabled Pages (build_type=workflow).
+- Pushed (commit `66d8929`). Triggered workflow run `36653353003` → **build + deploy both succeeded.**
+- **Verified LIVE:** https://sahaj-bhadja.github.io/job_boards/ (200), plus `/jobs.csv` and `/jobs.xlsx` (200).
+- **Phase 1 is complete and running in the cloud, $0 cost.**
+- **Only remaining user action for more volume:** add `ADZUNA_APP_ID`/`ADZUNA_APP_KEY` (+ optional `JOOBLE_API_KEY`) as GitHub repo Actions Secrets. No code change needed.
+- **Next possible work:** Phase 2 (Tier 2 boards), dedup across boards, email/alert on new matches.
 
 <!-- TEMPLATE for next entry:
 ### YYYY-MM-DD — Session N (model: ...)
