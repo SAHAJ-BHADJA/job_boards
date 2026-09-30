@@ -269,7 +269,14 @@ Chosen: cloud scheduler. Render specifics to implement:
 - **First run: 3 jobs stored** (Himalayas 1, WWR 2). Diagnosed the low yield — confirmed it's expected behavior, not a bug (Section 6): free no-key endpoints serve cached/stale data so few fall in the strict 24h window.
 - Sent the rendered dashboard to the user.
 - **Next action:** user to obtain free **Adzuna** (+ optionally Jooble) API keys → set env vars → re-run for real USA volume (scrapers already written). Then Render deploy (Section 8): needs `git init`, `render.yaml`, a tiny server, persistent disk or Postgres.
-- **Blocker:** Adzuna/Jooble keys (free, user action). Project not yet a git repo (needed for Render).
+- **Blocker:** Adzuna/Jooble keys (free, user action).
+
+### 2026-09-30 — Session 2 (cont.) — Version control set up
+- Confirmed Adzuna = correct API; user needs to register an app at developer.adzuna.com for `app_id`/`app_key` (the pasted page was just the version endpoint; scraper uses the Search endpoint).
+- Initialized git, added `.gitignore` (excludes `db/`, `logs/`, `dashboard/index.html`, `__pycache__`, `.env`, `*.sqlite`), `README.md`, `.env.example`.
+- Pushed to **https://github.com/SAHAJ-BHADJA/job_boards** (branch `main`, public). First commit `1a5198c`. gh authenticated as SAHAJ-BHADJA (has `repo` + `workflow` scopes).
+- Repo is PUBLIC → keys must stay in env vars only (never commit `.env`).
+- **Next action:** (1) user gets Adzuna key; (2) build Render deploy files (`render.yaml`, tiny web server, choose persistent-disk vs Postgres) and push.
 
 <!-- TEMPLATE for next entry:
 ### YYYY-MM-DD — Session N (model: ...)
