@@ -9,6 +9,7 @@ Usage:
     python runner.py
 """
 import os
+import shutil
 import sys
 import traceback
 from datetime import datetime, timezone
@@ -39,6 +40,10 @@ def main():
     _log("=== Job Bot run started ===")
     db.init_db()
 
+    # Load prior history from the committed CSV (persists across ephemeral CI runs).
+    imported = db.import_csv()
+    _log(f"CSV   imported {imported} prior rows from {config.CSV_PATH}")
+
     all_jobs = []
     for mod in SCRAPERS:
         name = getattr(mod, "NAME", mod.__name__)
@@ -57,9 +62,19 @@ def main():
     inserted, seen_again = db.upsert_jobs(all_jobs)
     _log(f"DB    matched-this-run={len(all_jobs)} new={inserted} already-seen={seen_again}")
 
+    # Durable source of truth + downloadable exports.
+    db.export_csv(config.CSV_PATH)
+    os.makedirs(config.DASHBOARD_DIR, exist_ok=True)
+    shutil.copyfile(config.CSV_PATH, config.DASHBOARD_CSV)
+    try:
+        db.export_xlsx(config.DASHBOARD_XLSX)
+    except Exception as e:  # noqa: BLE001 — never fail the run over Excel export
+        _log(f"WARN  xlsx export failed: {e}")
+
     build_dashboard.build()
     total, by_platform = db.stats()
-    _log(f"DASH  rebuilt -> {config.DASHBOARD_HTML} (DB total={total})")
+    _log(f"OUT   csv={config.CSV_PATH} xlsx+html -> {config.DASHBOARD_DIR}")
+    _log(f"DASH  rebuilt (DB total={total})")
     _log("=== Job Bot run finished ===")
     return 0
 

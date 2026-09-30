@@ -10,8 +10,8 @@ logs/
 *.sqlite3
 *.db
 
-# --- Generated dashboard output (rebuilt each run) ---
-dashboard/index.html
+# --- Generated dashboard output (rebuilt each run, deployed via Pages artifact) ---
+dashboard/
 
 # --- Python ---
 __pycache__/

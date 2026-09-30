@@ -37,6 +37,10 @@ _TEMPLATE = r"""<!doctype html>
   input, select { background:var(--panel); color:var(--text);
     border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:14px; }
   #q { flex:1 1 260px; min-width:200px; }
+  .btn { display:inline-flex; align-items:center; gap:4px; text-decoration:none;
+    background:var(--accent); color:#fff; border-radius:8px; padding:8px 12px;
+    font-size:14px; font-weight:600; }
+  .btn:hover { opacity:.9; }
   .stats { display:flex; flex-wrap:wrap; gap:8px; padding:0 16px 12px; }
   .chip { background:var(--chip); border:1px solid var(--border);
     border-radius:999px; padding:4px 10px; font-size:12px; color:var(--muted); }
@@ -68,6 +72,8 @@ _TEMPLATE = r"""<!doctype html>
   <input id="q" type="search" placeholder="Search title, company, platform…">
   <select id="platform"><option value="">All platforms</option></select>
   <select id="role"><option value="">All roles</option></select>
+  <a class="btn" href="jobs.csv" download>⬇ CSV</a>
+  <a class="btn" href="jobs.xlsx" download>⬇ Excel</a>
 </div>
 
 <div class="wrap">

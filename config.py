@@ -79,9 +79,20 @@ JOOBLE_API_KEY = os.environ.get("JOOBLE_API_KEY", "")
 # Paths
 # ---------------------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Ephemeral working DB (rebuilt from CSV each run; git-ignored).
 DB_PATH = os.environ.get("JOBBOT_DB", os.path.join(BASE_DIR, "db", "jobs.sqlite"))
+
+# Durable, committed source of truth (survives CI runs, opens in Excel).
+DATA_DIR = os.path.join(BASE_DIR, "data")
+CSV_PATH = os.environ.get("JOBBOT_CSV", os.path.join(DATA_DIR, "jobs.csv"))
+
+# Dashboard output (deployed to GitHub Pages; git-ignored, regenerated).
 DASHBOARD_DIR = os.path.join(BASE_DIR, "dashboard")
 DASHBOARD_HTML = os.path.join(DASHBOARD_DIR, "index.html")
+DASHBOARD_CSV = os.path.join(DASHBOARD_DIR, "jobs.csv")
+DASHBOARD_XLSX = os.path.join(DASHBOARD_DIR, "jobs.xlsx")
+
 LOG_DIR = os.path.join(BASE_DIR, "logs")
 
 # Polite HTTP defaults
